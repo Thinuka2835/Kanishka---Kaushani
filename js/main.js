@@ -296,7 +296,21 @@ function initSoundToggle() {
   const bgMusic = document.getElementById("bg-music");
   if (!btn) return;
 
-  let muted = true; // starts muted
+  let muted = false; // starts unmuted
+
+  if (bgMusic) {
+    bgMusic.play().then(() => {
+      btn.setAttribute("aria-label", "Mute music");
+      btn.setAttribute("title", "Mute music");
+      icon.innerHTML = getSoundOnSVG();
+    }).catch(e => {
+      console.log("Autoplay blocked:", e);
+      muted = true; // revert to muted if blocked
+      btn.setAttribute("aria-label", "Unmute music");
+      btn.setAttribute("title", "Unmute music");
+      icon.innerHTML = getSoundOffSVG();
+    });
+  }
 
   btn.addEventListener("click", () => {
     muted = !muted;
