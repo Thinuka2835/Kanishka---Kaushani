@@ -530,7 +530,7 @@ ul {
 .hero-bg {
   position: absolute;
   inset: 0;
-  background-image: url('../images/ENV_6880.jpg');
+  background-image: url('../images/ENV_6880.webp');
   background-size: cover;
   background-position: center top;
   transform: scale(1.05);
