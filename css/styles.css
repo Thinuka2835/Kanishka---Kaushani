@@ -1898,3 +1898,235 @@ footer {
     left: 33px;
   }
 }
+
+
+/* ============================================================
+   ENVELOPE PRELOADER
+   ============================================================ */
+
+/* Lock scroll while preloader is active */
+body.preloader-active {
+  overflow: hidden;
+}
+
+/* ---- Full-screen overlay ---- */
+#preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--clr-dark);
+  transition: opacity 0.7s ease;
+  pointer-events: all;
+}
+
+#preloader.env-exit {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---- Scene wrapper ---- */
+.env-scene {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.75rem;
+}
+
+/* ---- Envelope body ---- */
+.env-body {
+  position: relative;
+  width: clamp(220px, 55vw, 340px);
+  height: clamp(150px, 38vw, 230px);
+  background: var(--clr-cream);
+  border-radius: 4px;
+  box-shadow:
+    0 8px 40px rgba(0,0,0,.45),
+    0 0 0 1px rgba(184,150,62,.25);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.env-body:hover {
+  transform: scale(1.015);
+}
+
+/* ---- Flaps (CSS triangle trick) ---- */
+.env-flap {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+/* Bottom flap – triangle pointing up */
+.env-flap-bottom {
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 55%;
+  background: linear-gradient(
+    to top right,
+    #e0d4bc 0%,
+    var(--clr-cream) 60%
+  );
+  clip-path: polygon(0% 100%, 50% 0%, 100% 100%);
+}
+
+/* Left flap */
+.env-flap-left {
+  left: 0;
+  top: 0;
+  width: 52%;
+  height: 100%;
+  background: #e8dcc8;
+  clip-path: polygon(0% 0%, 100% 50%, 0% 100%);
+}
+
+/* Right flap */
+.env-flap-right {
+  right: 0;
+  top: 0;
+  width: 52%;
+  height: 100%;
+  background: #ddd0ba;
+  clip-path: polygon(100% 0%, 0% 50%, 100% 100%);
+}
+
+/* Top flap – closed state: triangle pointing down */
+.env-flap-top {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 55%;
+  background: linear-gradient(
+    to bottom right,
+    #cfc0a4 0%,
+    #e2d4bc 60%
+  );
+  clip-path: polygon(0% 0%, 50% 95%, 100% 0%);
+  transform-origin: top center;
+  transition: transform 0.7s cubic-bezier(.4, 0, .2, 1);
+  z-index: 4;
+}
+
+/* Top flap open state */
+.env-body.env-opening .env-flap-top {
+  transform: rotateX(180deg) translateY(-2px);
+}
+
+/* ---- Wax seal ---- */
+.env-seal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  width: clamp(52px, 14vw, 72px);
+  height: clamp(52px, 14vw, 72px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 35%, var(--clr-gold-light), var(--clr-gold) 55%, #8a6520);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 2px 12px rgba(0,0,0,.4),
+    0 0 0 3px rgba(184,150,62,.35),
+    inset 0 1px 3px rgba(255,255,255,.2);
+  transition: transform 0.4s ease, opacity 0.35s ease;
+}
+
+.env-seal-monogram {
+  font-family: var(--ff-script);
+  font-size: clamp(1rem, 3.5vw, 1.5rem);
+  color: var(--clr-dark);
+  user-select: none;
+  line-height: 1;
+  margin-top: 0.1em;
+}
+
+/* Seal breaking on open */
+.env-body.env-opening .env-seal {
+  transform: translate(-50%, -50%) scale(0) rotate(30deg);
+  opacity: 0;
+}
+
+/* ---- Progress bar ---- */
+.env-progress-wrap {
+  position: absolute;
+  bottom: 12px;
+  left: 15%;
+  width: 70%;
+  height: 2px;
+  background: rgba(184,150,62,.2);
+  border-radius: 999px;
+  overflow: hidden;
+  z-index: 6;
+}
+
+.env-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--clr-gold);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+/* ---- Caption ---- */
+.env-caption {
+  font-family: var(--ff-body);
+  font-size: clamp(0.6rem, 2vw, 0.7rem);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(240,233,220,0.5);
+  text-align: center;
+}
+
+/* ---- Full open — envelope expands & fades out ---- */
+#preloader.env-open .env-body {
+  animation: envExpand 0.55s cubic-bezier(.4, 0, .2, 1) forwards;
+}
+
+#preloader.env-open .env-scene {
+  animation: envSceneFade 0.55s ease forwards;
+}
+
+@keyframes envExpand {
+  0%   { transform: scale(1); opacity: 1; }
+  60%  { transform: scale(1.15); opacity: 0.8; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+@keyframes envSceneFade {
+  0%   { opacity: 1; }
+  60%  { opacity: 0.6; }
+  100% { opacity: 0; }
+}
+
+/* ---- Tap hint pulse on the seal ---- */
+@keyframes sealPulse {
+  0%, 100% { box-shadow: 0 2px 12px rgba(0,0,0,.4), 0 0 0 3px rgba(184,150,62,.35), inset 0 1px 3px rgba(255,255,255,.2); }
+  50%       { box-shadow: 0 2px 20px rgba(0,0,0,.5), 0 0 0 6px rgba(184,150,62,.5), inset 0 1px 3px rgba(255,255,255,.2); }
+}
+
+.env-seal.env-ready {
+  animation: sealPulse 1.6s ease-in-out infinite;
+  cursor: pointer;
+}
+
+/* ---- prefers-reduced-motion: skip fancy animation, use simple fade ---- */
+@media (prefers-reduced-motion: reduce) {
+  .env-flap-top,
+  .env-seal,
+  #preloader.env-open .env-body,
+  #preloader.env-open .env-scene {
+    animation: none !important;
+    transition: opacity 0.4s ease !important;
+  }
+
+  #preloader.env-open .env-body,
+  #preloader.env-open .env-scene {
+    opacity: 0 !important;
+  }
+}

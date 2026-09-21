@@ -14,9 +14,44 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="css/styles.css" />
+  <link rel="preload" as="image" fetchpriority="high" href="images/ENV_6880.webp" />
 </head>
 
 <body>
+
+  <!-- ============================================================
+     ENVELOPE PRELOADER
+     ============================================================ -->
+  <div id="preloader" role="status" aria-label="Loading your invitation" aria-live="polite">
+    <div class="env-scene">
+
+      <!-- Envelope body -->
+      <div class="env-body">
+        <!-- Bottom triangle flap -->
+        <div class="env-flap env-flap-bottom"></div>
+        <!-- Left triangle flap -->
+        <div class="env-flap env-flap-left"></div>
+        <!-- Right triangle flap -->
+        <div class="env-flap env-flap-right"></div>
+        <!-- Top flap (opens) -->
+        <div class="env-flap env-flap-top"></div>
+
+        <!-- Wax seal -->
+        <div class="env-seal" id="env-seal" aria-hidden="true">
+          <span class="env-seal-monogram">K&amp;K</span>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="env-progress-wrap" aria-hidden="true">
+          <div class="env-progress-bar" id="env-progress-bar"></div>
+        </div>
+      </div>
+
+      <!-- Caption below envelope -->
+      <p class="env-caption" aria-hidden="true">Loading your invitation&hellip;</p>
+
+    </div>
+  </div>
 
   <!-- ============================================================
      MAIN CONTENT

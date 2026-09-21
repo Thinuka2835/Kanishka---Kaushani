@@ -42,18 +42,167 @@ const CONFIG = {
 // ──────────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
   populateContent();
-  initHero();
   initCountdown();
   initScrollReveal();
   initTabs();
   initCollapsible();
   initCopyIBAN();
   initCalendarButton();
-  initSoundToggle();
   initSmoothScroll();
   initGallery();
   initRSVP();
+
+  // Preloader drives hero reveal — initHero is called from inside
+  initPreloader();
 });
+
+// ──────────────────────────────────────────────────────────────
+// PRELOADER — Envelope opening animation
+// ──────────────────────────────────────────────────────────────
+function initPreloader() {
+  const preloader = document.getElementById("preloader");
+
+  // Safety: if the HTML element is missing, fall back gracefully
+  if (!preloader) {
+    initHero();
+    initSoundToggle();
+    return;
+  }
+
+  // Lock scrolling while the envelope is showing
+  document.body.classList.add("preloader-active");
+
+  const envBody     = preloader.querySelector(".env-body");
+  const seal        = document.getElementById("env-seal");
+  const progressBar = document.getElementById("env-progress-bar");
+
+  // ── Images to preload (hero + first 5 gallery slides) ──────
+  const PRIORITY_IMAGES = [
+    "images/ENV_6880.webp",  // hero background
+    "images/ENV_6299.webp",
+    "images/ENV_6335.webp",
+    "images/ENV_6344.webp",
+    "images/ENV_6391.webp",
+    "images/ENV_6428.webp",
+  ];
+
+  const MIN_DISPLAY_MS = 1300;
+  const MAX_DISPLAY_MS = 6000;
+
+  let openAllowed    = false; // true once min time + images ready
+  let openRequested  = false; // true if user tapped early
+  let alreadyOpened  = false;
+
+  // ── Preload images, track progress ─────────────────────────
+  let loaded = 0;
+  const total = PRIORITY_IMAGES.length;
+
+  function onImageSettled() {
+    loaded++;
+    if (progressBar) {
+      progressBar.style.width = Math.round((loaded / total) * 100) + "%";
+    }
+    if (loaded >= total) onImagesReady();
+  }
+
+  const imagePromises = PRIORITY_IMAGES.map(src => {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = img.onerror = () => { onImageSettled(); resolve(); };
+      img.src = src;
+    });
+  });
+
+  // ── Timing gates ────────────────────────────────────────────
+  const startTime = Date.now();
+  let imagesReady = false;
+  let minTimeReady = false;
+
+  function onImagesReady() {
+    imagesReady = true;
+    tryOpen();
+  }
+
+  function tryOpen() {
+    if (alreadyOpened) return;
+    if ((imagesReady || openRequested) && minTimeReady) {
+      openAllowed = true;
+      doOpen();
+    }
+  }
+
+  // Minimum display time
+  setTimeout(() => {
+    minTimeReady = true;
+    if (seal) seal.classList.add("env-ready"); // start pulsing to hint it's tappable
+    tryOpen();
+  }, MIN_DISPLAY_MS);
+
+  // Hard cap — open regardless after MAX_DISPLAY_MS
+  setTimeout(() => {
+    if (!alreadyOpened) {
+      imagesReady = true;
+      minTimeReady = true;
+      doOpen();
+    }
+  }, MAX_DISPLAY_MS);
+
+  // ── User tap to open early (once min time passed) ───────────
+  function handleTap() {
+    openRequested = true;
+    if (minTimeReady) {
+      doOpen();
+    }
+    // If minTime hasn't passed yet, tryOpen() will catch it when it does
+  }
+
+  if (envBody) envBody.addEventListener("click", handleTap);
+  if (seal)    seal.addEventListener("click", handleTap);
+
+  // ── The actual opening sequence ─────────────────────────────
+  function doOpen() {
+    if (alreadyOpened) return;
+    alreadyOpened = true;
+
+    // Remove tap listeners
+    if (envBody) envBody.removeEventListener("click", handleTap);
+    if (seal)    seal.removeEventListener("click", handleTap);
+    if (seal)    seal.classList.remove("env-ready");
+
+    // Progress bar to 100%
+    if (progressBar) progressBar.style.width = "100%";
+
+    // Step 1: flap opens + seal breaks
+    if (envBody) envBody.classList.add("env-opening");
+
+    // Give user gesture to music (tap = guaranteed user interaction)
+    const bgMusic = document.getElementById("bg-music");
+    if (bgMusic && bgMusic.paused) {
+      bgMusic.play().catch(() => {});
+    }
+
+    // Step 2: after flap animation (700ms), expand & fade whole envelope
+    setTimeout(() => {
+      preloader.classList.add("env-open");
+
+      // Step 3: trigger hero reveal at same moment
+      initHero();
+      initSoundToggle();
+
+      // Step 4: after expand animation (550ms), add exit fade & restore scroll
+      setTimeout(() => {
+        preloader.classList.add("env-exit");
+        document.body.classList.remove("preloader-active");
+
+        // Step 5: after fade (700ms), remove from DOM entirely
+        setTimeout(() => {
+          preloader.remove();
+        }, 750);
+      }, 560);
+    }, 720);
+  }
+}
+
 
 // ──────────────────────────────────────────────────────────────
 // POPULATE CONTENT
@@ -96,10 +245,9 @@ function populateVenue(type, data) {
 // HERO
 // ──────────────────────────────────────────────────────────────
 function initHero() {
-  // Trigger hero animation immediately since intro is removed
-  setTimeout(() => {
-    document.getElementById("hero")?.classList.add("loaded");
-  }, 150);
+  // Called by initPreloader when the envelope opens —
+  // adding "loaded" immediately triggers the CSS slow-zoom reveal.
+  document.getElementById("hero")?.classList.add("loaded");
 }
 
 
