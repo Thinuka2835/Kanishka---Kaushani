@@ -492,7 +492,7 @@ function initRSVP() {
   const confirmEl = document.getElementById("rsvp-confirm");
   const nameInput = document.getElementById("rsvp-name");
 
-  if (!btnYes || !btnNo || !countEl) return;
+  if (!btnYes || !btnNo) return;
 
   // ── Google Form config ────────────────────────────────────────
   // 1. Create a Google Form with two questions:
@@ -548,16 +548,20 @@ function initRSVP() {
       localStorage.setItem(STORAGE_KEY + "_count", count);
     }
 
+    // Lock the UI and show the message immediately — don't make the guest
+    // wait on the network request before they see any feedback.
     localStorage.setItem(STORAGE_KEY + "_choice", choice);
     if (guestName) localStorage.setItem(STORAGE_KEY + "_name", guestName);
     lockButtons(choice);
     showConfirm(choice);
     if (nameInput) nameInput.disabled = true;
+
     submitToGoogleForm(guestName, choice === "yes" ? ENTRY_ATTEND : ENTRY_DECLINE);
   }
 
   /* ---- Counter display with animated pop ---- */
   function setCount(n, animate) {
+    if (!countEl) return;
     countEl.textContent = n;
     if (animate) {
       countEl.classList.remove("pop");
@@ -568,15 +572,18 @@ function initRSVP() {
 
   /* ---- Lock both buttons after responding ---- */
   function lockButtons(choice) {
+    btnYes.disabled = true;
+    btnNo.disabled = true;
     btnYes.classList.add(choice === "yes" ? "rsvp-btn-chosen" : "rsvp-btn-done");
     btnNo.classList.add(choice === "no" ? "rsvp-btn-chosen" : "rsvp-btn-done");
   }
 
   /* ---- Confirmation message ---- */
   function showConfirm(choice) {
+    if (!confirmEl) return;
     confirmEl.textContent = choice === "yes"
-      ? "🎉 Thank you! We can't wait to celebrate with you."
-      : "💌 We'll miss you! Thank you for letting us know.";
+      ? "🎉 Thank you for confirming! We can't wait to celebrate this special day with you."
+      : "💌 We're sorry you can't make it — you'll be missed! Thank you so much for letting us know.";
     confirmEl.classList.add("show");
   }
 
@@ -615,31 +622,31 @@ function initRSVP() {
     }
   }
 
-  /* ---- Submit to Google Form silently via hidden iframe ---- */
+  /* ---- Submit to Google Form silently in the background ----
+     FIX: the old version pointed the form's `target` at an iframe
+     named "rsvp-iframe" that was never actually created anywhere in
+     the page, so the browser had nowhere to submit to and the
+     request effectively went nowhere. Using fetch() with
+     mode: "no-cors" sends the same POST directly to Google's
+     formResponse endpoint without needing any iframe at all. The
+     response is opaque (we can't read it back, and Google Forms
+     doesn't support CORS), but the submission itself goes through —
+     you'll see it appear in the linked Google Sheet / form responses. */
   function submitToGoogleForm(name, attendValue) {
-    // Skip if placeholder URL is still in place
-    if (GOOGLE_FORM_URL.includes("FORM_ID")) return;
+    if (GOOGLE_FORM_URL.includes("FORM_ID")) return; // placeholder still in place
 
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = GOOGLE_FORM_URL;
-    form.target = "rsvp-iframe";
-    form.style.display = "none";
+    const body = new URLSearchParams();
+    body.append(NAME_ENTRY_FIELD, name);
+    body.append(ATTEND_ENTRY_FIELD, attendValue);
 
-    const nameField = document.createElement("input");
-    nameField.type = "hidden";
-    nameField.name = NAME_ENTRY_FIELD;
-    nameField.value = name;
-    form.appendChild(nameField);
-
-    const attendField = document.createElement("input");
-    attendField.type = "hidden";
-    attendField.name = ATTEND_ENTRY_FIELD;
-    attendField.value = attendValue;
-    form.appendChild(attendField);
-
-    document.body.appendChild(form);
-    form.submit();
-    setTimeout(() => form.remove(), 2000);
+    fetch(GOOGLE_FORM_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString()
+    }).catch(err => {
+      // Network failure only — the RSVP is still locked in locally either way.
+      console.log("RSVP form submit failed:", err);
+    });
   }
 }
