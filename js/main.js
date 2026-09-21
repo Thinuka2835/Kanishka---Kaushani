@@ -466,10 +466,11 @@ function showToastMsg(msg) {
 function initRSVP() {
   const btnYes = document.getElementById("rsvp-yes");
   const btnNo = document.getElementById("rsvp-no");
+  const countEl = document.getElementById("rsvp-count");
   const confirmEl = document.getElementById("rsvp-confirm");
   const nameInput = document.getElementById("rsvp-name");
 
-  if (!btnYes || !btnNo) return;
+  if (!btnYes || !btnNo || !countEl) return;
 
   // ── Google Form config ────────────────────────────────────────
   // 1. Create a Google Form with two questions:
@@ -487,10 +488,12 @@ function initRSVP() {
 
   const STORAGE_KEY = "rsvp_kk2026";
 
-  /* ---- Load persisted name / choice ---- */
+  /* ---- Load persisted count / name ---- */
+  let count = parseInt(localStorage.getItem(STORAGE_KEY + "_count") || "0", 10);
   const hasResponded = localStorage.getItem(STORAGE_KEY + "_choice");
   const savedName = localStorage.getItem(STORAGE_KEY + "_name") || "";
 
+  setCount(count, false);
   if (nameInput && savedName) nameInput.value = savedName;
 
   /* ---- If already responded, lock buttons + name field ---- */
@@ -517,7 +520,10 @@ function initRSVP() {
     triggerRipple(e);
 
     if (choice === "yes") {
+      count++;
+      setCount(count, true);
       fireConfetti(e);
+      localStorage.setItem(STORAGE_KEY + "_count", count);
     }
 
     localStorage.setItem(STORAGE_KEY + "_choice", choice);
@@ -528,7 +534,15 @@ function initRSVP() {
     submitToGoogleForm(guestName, choice === "yes" ? ENTRY_ATTEND : ENTRY_DECLINE);
   }
 
-
+  /* ---- Counter display with animated pop ---- */
+  function setCount(n, animate) {
+    countEl.textContent = n;
+    if (animate) {
+      countEl.classList.remove("pop");
+      void countEl.offsetWidth; // reflow
+      countEl.classList.add("pop");
+    }
+  }
 
   /* ---- Lock both buttons after responding ---- */
   function lockButtons(choice) {
@@ -607,3 +621,4 @@ function initRSVP() {
     setTimeout(() => form.remove(), 2000);
   }
 }
+ 
