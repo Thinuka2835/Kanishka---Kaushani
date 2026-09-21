@@ -293,6 +293,7 @@ function initCalendarButton() {
 function initSoundToggle() {
   const btn = document.getElementById("sound-toggle");
   const icon = document.getElementById("sound-icon");
+  const bgMusic = document.getElementById("bg-music");
   if (!btn) return;
 
   let muted = true; // starts muted
@@ -304,7 +305,14 @@ function initSoundToggle() {
 
     icon.innerHTML = muted ? getSoundOffSVG() : getSoundOnSVG();
 
-    showToastMsg(muted ? "Music muted" : "Playing music 🎵");
+    if (bgMusic) {
+      if (muted) {
+        bgMusic.pause();
+      } else {
+        bgMusic.play().catch(e => console.log("Audio play failed:", e));
+      }
+    }
+    //showToastMsg(muted ? "Music muted" : "Playing music 🎵");
   });
 }
 
@@ -621,4 +629,3 @@ function initRSVP() {
     setTimeout(() => form.remove(), 2000);
   }
 }
- 
