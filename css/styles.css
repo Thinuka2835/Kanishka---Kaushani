@@ -1636,12 +1636,19 @@ footer {
 }
 
 /* ---- Guest name ---- */
+.rsvp-fields-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
 .rsvp-name-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 2rem;
 }
 
 .rsvp-name-label {
@@ -1679,6 +1686,21 @@ footer {
 .rsvp-name-input:disabled {
   opacity: 0.6;
   pointer-events: none;
+}
+
+.rsvp-participants-input {
+  max-width: 160px;
+  text-align: center;
+}
+
+/* Remove native number spinners for a cleaner look */
+.rsvp-participants-input::-webkit-outer-spin-button,
+.rsvp-participants-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.rsvp-participants-input[type=number] {
+  -moz-appearance: textfield;
 }
 
 /* ---- Buttons ---- */

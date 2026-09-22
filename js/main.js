@@ -638,7 +638,8 @@ function initRSVP() {
   const btnNo = document.getElementById("rsvp-no");
   const countEl = document.getElementById("rsvp-count");
   const confirmEl = document.getElementById("rsvp-confirm");
-  const nameInput = document.getElementById("rsvp-name");
+  const nameInput       = document.getElementById("rsvp-name");
+  const guestCountInput = document.getElementById("rsvp-participants"); // <-- අලුත් එක
 
   if (!btnYes || !btnNo) return;
 
@@ -649,12 +650,14 @@ function initRSVP() {
   // 2. Replace FORM_ID below with your form's ID (from its share/edit URL)
   // 3. Replace NAME_ENTRY_ID and ATTEND_ENTRY_ID with the real entry IDs
   //    (see the setup guide for how to find these two numbers)
-  const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLScS4J8n9ARKeAoz_1JctJlrJ0Df5pItoIGdBEyvmRDSgD-Ujw/formResponse";
-  const NAME_ENTRY_FIELD = "entry.1247952776";
+  const GOOGLE_FORM_URL    = "https://docs.google.com/forms/d/e/1FAIpQLScS4J8n9ARKeAoz_1JctJlrJ0Df5pItoIGdBEyvmRDSgD-Ujw/formResponse";
+  const NAME_ENTRY_FIELD   = "entry.1247952776";
   const ATTEND_ENTRY_FIELD = "entry.932895368";
-  const ENTRY_ATTEND = "Yes";
+  const COUNT_ENTRY_FIELD  = "entry.1716365246"; // <-- No. of Participants
+  const ENTRY_ATTEND  = "Yes";
   const ENTRY_DECLINE = "No";    // Form එකේ එන්නේ නැති අයට තෝරන්න දීලා තියෙන වචනය (උදා: "No") මෙතැනට දෙන්න.
   // ─────────────────────────────────────────────────────────────
+
 
   const STORAGE_KEY = "rsvp_kk2026";
 
@@ -670,7 +673,8 @@ function initRSVP() {
   if (hasResponded) {
     lockButtons(hasResponded);
     showConfirm(hasResponded);
-    if (nameInput) nameInput.disabled = true;
+    if (nameInput)       nameInput.disabled       = true;
+    if (guestCountInput) guestCountInput.disabled = true; // <-- අලුත් එක
   }
 
   /* ---- Button click handlers ---- */
@@ -680,7 +684,9 @@ function initRSVP() {
   function handleRSVP(e, choice) {
     if (localStorage.getItem(STORAGE_KEY + "_choice")) return; // already voted
 
-    const guestName = nameInput ? nameInput.value.trim() : "";
+    const guestName  = nameInput        ? nameInput.value.trim()        : "";
+    const guestCount = guestCountInput  ? (guestCountInput.value.trim() || "1") : "1"; // <-- අලුත් එක
+
     if (nameInput && !guestName) {
       nameInput.focus();
       showToastMsg("Please enter your name first 🙂");
@@ -702,9 +708,10 @@ function initRSVP() {
     if (guestName) localStorage.setItem(STORAGE_KEY + "_name", guestName);
     lockButtons(choice);
     showConfirm(choice);
-    if (nameInput) nameInput.disabled = true;
+    if (nameInput)       nameInput.disabled       = true;
+    if (guestCountInput) guestCountInput.disabled = true; // <-- අලුත් එක
 
-    submitToGoogleForm(guestName, choice === "yes" ? ENTRY_ATTEND : ENTRY_DECLINE);
+    submitToGoogleForm(guestName, choice === "yes" ? ENTRY_ATTEND : ENTRY_DECLINE, guestCount);
   }
 
   /* ---- Counter display with animated pop ---- */
@@ -780,12 +787,13 @@ function initRSVP() {
      response is opaque (we can't read it back, and Google Forms
      doesn't support CORS), but the submission itself goes through —
      you'll see it appear in the linked Google Sheet / form responses. */
-  function submitToGoogleForm(name, attendValue) {
+  function submitToGoogleForm(name, attendValue, count) { // <-- count parameter අලුතින්
     if (GOOGLE_FORM_URL.includes("FORM_ID")) return; // placeholder still in place
 
     const body = new URLSearchParams();
-    body.append(NAME_ENTRY_FIELD, name);
+    body.append(NAME_ENTRY_FIELD,   name);
     body.append(ATTEND_ENTRY_FIELD, attendValue);
+    body.append(COUNT_ENTRY_FIELD,  count || "1"); // <-- අලුත් field එක
 
     fetch(GOOGLE_FORM_URL, {
       method: "POST",
