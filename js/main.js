@@ -400,20 +400,20 @@ function initCalendarButton() {
 
   // ── Event details ──────────────────────────────────────────
   const EVENT = {
-    title:       "Kanishka & Kaushanee Wedding",
-    start:       "20261029T084500",   // Oct 29 2026 08:45 AM local
-    end:         "20261029T160000",   // Oct 29 2026 04:00 PM local
-    location:    "Rongfa Regency, 152/A8 Kosinna Junction, Kadawatha-Ganemulla Rd, Ganemulla 11020",
+    title: "Kanishka & Kaushanee Wedding",
+    start: "20261029T084500",   // Oct 29 2026 08:45 AM local
+    end: "20261029T160000",   // Oct 29 2026 04:00 PM local
+    location: "Rongfa Regency, 152/A8 Kosinna Junction, Kadawatha-Ganemulla Rd, Ganemulla 11020",
     description: "You are warmly invited to celebrate the wedding of Kanishka & Kaushanee. We can\u2019t wait to see you there!",
-    uid:         "kanishka-kaushanee-wedding-20261029@invitation"
+    uid: "kanishka-kaushanee-wedding-20261029@invitation"
   };
 
   // ── Platform detection ─────────────────────────────────────
   function getDevice() {
     const ua = navigator.userAgent || "";
     if (/iPhone|iPad|iPod/i.test(ua)) return "ios";
-    if (/Android/i.test(ua))          return "android";
-    if (/Macintosh/i.test(ua))        return "mac";
+    if (/Android/i.test(ua)) return "android";
+    if (/Macintosh/i.test(ua)) return "mac";
     return "desktop";
   }
 
@@ -453,35 +453,48 @@ function initCalendarButton() {
   // ── Google Calendar deep link (for Android) ────────────────
   function googleCalendarURL() {
     const params = new URLSearchParams({
-      action:   "TEMPLATE",
-      text:     EVENT.title,
-      dates:    EVENT.start + "/" + EVENT.end,
-      ctz:      "Asia/Colombo",
+      action: "TEMPLATE",
+      text: EVENT.title,
+      dates: EVENT.start + "/" + EVENT.end,
+      ctz: "Asia/Colombo",
       location: EVENT.location,
-      details:  EVENT.description
+      details: EVENT.description
     });
     return "https://calendar.google.com/calendar/render?" + params.toString();
   }
 
-  // ── Trigger .ics via Blob (iOS / Mac / Desktop) ────────────
+  // ── Open straight into the native Calendar app (iOS / macOS) ─
+  // Safari (on both iOS and macOS) recognises a `text/calendar`
+  // data URI and hands off directly to the Calendar app's native
+  // "Add Event" screen — the VALARM reminders above come along
+  // with it. Nothing gets saved to Downloads/Files first.
+  function openNativeCalendar() {
+    const ics = buildICS();
+    const dataUri = "data:text/calendar;charset=utf-8," + encodeURIComponent(ics);
+
+    const a = document.createElement("a");
+    a.href = dataUri;               // no "download" attribute here —
+    document.body.appendChild(a);    // that's what would force a file
+    a.click();                       // save instead of an app hand-off
+    document.body.removeChild(a);
+  }
+
+  // ── Fallback: save the .ics file (Windows / Linux / other) ──
+  // Browsers are not allowed to launch a native desktop app
+  // directly on non-Apple platforms — that's a security
+  // restriction of the browser, not something a site can bypass.
+  // The closest equivalent is handing over the .ics file: most
+  // calendar apps (Outlook, Thunderbird, etc.) are already
+  // registered to open .ics files, so double-clicking the
+  // downloaded file adds the event — reminders included — in one
+  // more click.
   function downloadICS() {
-    const ics  = buildICS();
+    const ics = buildICS();
     const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
-    const url  = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
 
-    // On iOS, window.open works better than <a download> for
-    // handing off to the native Calendar app.
-    const device = getDevice();
-    if (device === "ios") {
-      window.open(url, "_blank");
-      // Revoke after a delay so the OS has time to read it
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
-      return;
-    }
-
-    // Desktop / Mac: download the file
-    const a  = document.createElement("a");
-    a.href     = url;
+    const a = document.createElement("a");
+    a.href = url;
     a.download = "kanishka-kaushanee-wedding.ics";
     document.body.appendChild(a);
     a.click();
@@ -494,10 +507,15 @@ function initCalendarButton() {
     const device = getDevice();
 
     if (device === "android") {
-      // Android: open Google Calendar directly
+      // Opens the Google Calendar app directly to add the event.
+      // Note: Google's quick-add link has no "reminder" parameter,
+      // so this uses Google Calendar's own default reminder rather
+      // than the custom 1-day/2-hour alarms baked into the .ics.
       window.open(googleCalendarURL(), "_blank");
+    } else if (device === "ios" || device === "mac") {
+      openNativeCalendar();
     } else {
-      // iOS / Mac / Desktop: serve the .ics blob
+      // Windows / Linux desktop, or a non-Safari browser
       downloadICS();
     }
   });
