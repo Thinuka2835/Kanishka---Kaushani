@@ -72,8 +72,8 @@ function initPreloader() {
   // Lock scrolling while the envelope is showing
   document.body.classList.add("preloader-active");
 
-  const envBody     = preloader.querySelector(".env-body");
-  const seal        = document.getElementById("env-seal");
+  const envBody = preloader.querySelector(".env-body");
+  const seal = document.getElementById("env-seal");
   const progressBar = document.getElementById("env-progress-bar");
 
   // ── Images to preload (hero + first 5 gallery slides) ──────
@@ -89,9 +89,9 @@ function initPreloader() {
   const MIN_DISPLAY_MS = 1300;
   const MAX_DISPLAY_MS = 6000;
 
-  let openAllowed    = false; // true once min time + images ready
-  let openRequested  = false; // true if user tapped early
-  let alreadyOpened  = false;
+  let openAllowed = false; // true once min time + images ready
+  let openRequested = false; // true if user tapped early
+  let alreadyOpened = false;
 
   // ── Preload images, track progress ─────────────────────────
   let loaded = 0;
@@ -157,7 +157,7 @@ function initPreloader() {
   }
 
   if (envBody) envBody.addEventListener("click", handleTap);
-  if (seal)    seal.addEventListener("click", handleTap);
+  if (seal) seal.addEventListener("click", handleTap);
 
   // ── The actual opening sequence ─────────────────────────────
   function doOpen() {
@@ -166,8 +166,8 @@ function initPreloader() {
 
     // Remove tap listeners
     if (envBody) envBody.removeEventListener("click", handleTap);
-    if (seal)    seal.removeEventListener("click", handleTap);
-    if (seal)    seal.classList.remove("env-ready");
+    if (seal) seal.removeEventListener("click", handleTap);
+    if (seal) seal.classList.remove("env-ready");
 
     // Progress bar to 100%
     if (progressBar) progressBar.style.width = "100%";
@@ -178,7 +178,7 @@ function initPreloader() {
     // Give user gesture to music (tap = guaranteed user interaction)
     const bgMusic = document.getElementById("bg-music");
     if (bgMusic && bgMusic.paused) {
-      bgMusic.play().catch(() => {});
+      bgMusic.play().catch(() => { });
     }
 
     // Step 2: after flap animation (700ms), expand & fade whole envelope
@@ -511,20 +511,20 @@ function initSmoothScroll() {
 // GALLERY — Seamless Infinite Carousel
 // ──────────────────────────────────────────────────────────────
 function initGallery() {
-  const carousel  = document.getElementById("gallery-carousel");
-  const track     = document.getElementById("gc-track");
-  const gcPrev    = document.getElementById("gc-prev");
-  const gcNext    = document.getElementById("gc-next");
-  const dotsWrap  = document.getElementById("gc-dots");
+  const carousel = document.getElementById("gallery-carousel");
+  const track = document.getElementById("gc-track");
+  const gcPrev = document.getElementById("gc-prev");
+  const gcNext = document.getElementById("gc-next");
+  const dotsWrap = document.getElementById("gc-dots");
   const origSlides = Array.from(document.querySelectorAll(".gc-slide"));
 
   if (!carousel || !track || !origSlides.length) return;
 
-  const TOTAL      = origSlides.length;
-  const AUTO_DELAY = 2000;   // 2 seconds between auto-advances
-  const TRANS_MS   = 650;    // must match CSS transition duration
-  let autoTimer    = null;
-  let isBusy       = false;  // block rapid-fire clicks during transition
+  const TOTAL = origSlides.length;
+  const AUTO_DELAY = 3500;   // 3.5 seconds between auto-advances
+  const TRANS_MS = 650;    // must match CSS transition duration
+  let autoTimer = null;
+  let isBusy = false;  // block rapid-fire clicks during transition
 
   // ── Build infinite track: [clones] + [real slides] + [clones] ──
   // Layout indices:  0..TOTAL-1  |  TOTAL..2*TOTAL-1  |  2*TOTAL..3*TOTAL-1
@@ -554,7 +554,7 @@ function initGallery() {
   // All DOM slide nodes (3 × TOTAL)
   const allSlides = Array.from(track.querySelectorAll(".gc-slide"));
 
-  let domIdx  = TOTAL; // current DOM position (starts at first real slide)
+  let domIdx = TOTAL; // current DOM position (starts at first real slide)
   let realIdx = 0;     // current logical index (for dots)
 
   // ── Sizing ───────────────────────────────────────────────────────
@@ -568,9 +568,9 @@ function initGallery() {
   function slideGap() { return window.innerWidth <= 600 ? 16 : 24; }
 
   function applySlideWidths() {
-    const lw       = landscapeWidth();
-    const lh       = lw * (2 / 3);
-    const pw       = lh * (2 / 3);
+    const lw = landscapeWidth();
+    const lh = lw * (2 / 3);
+    const pw = lh * (2 / 3);
     allSlides.forEach(s => {
       s.style.width = (s.dataset.orientation === "portrait" ? pw : lw) + "px";
     });
@@ -600,8 +600,8 @@ function initGallery() {
 
   // ── Offset calculation (sums actual widths for mixed aspect ratios) ──
   function calcOffset(idx) {
-    const gap      = slideGap();
-    const centerW  = carousel.offsetWidth;
+    const gap = slideGap();
+    const centerW = carousel.offsetWidth;
     let sum = 0;
     for (let i = 0; i < idx; i++) sum += allSlides[i].offsetWidth + gap;
     return -sum + (centerW / 2) - (allSlides[idx].offsetWidth / 2);
@@ -619,8 +619,8 @@ function initGallery() {
     if (isBusy) return;
     isBusy = true;
 
-    domIdx  += dir;
-    realIdx  = ((domIdx - TOTAL) % TOTAL + TOTAL) % TOTAL;
+    domIdx += dir;
+    realIdx = ((domIdx - TOTAL) % TOTAL + TOTAL) % TOTAL;
 
     applyOffset(domIdx, true);
     updateActive();
@@ -641,8 +641,8 @@ function initGallery() {
 
   // ── Jump to a specific real slide (dot / click) ───────────────────
   function jumpToReal(idx) {
-    isBusy  = false; // allow immediate jump
-    domIdx  = TOTAL + idx;
+    isBusy = false; // allow immediate jump
+    domIdx = TOTAL + idx;
     realIdx = idx;
     applyOffset(domIdx, true);
     updateActive();
@@ -672,7 +672,7 @@ function initGallery() {
 
   // ── Arrows ───────────────────────────────────────────────────────
   if (gcPrev) gcPrev.addEventListener("click", () => { step(-1); resetAuto(); });
-  if (gcNext) gcNext.addEventListener("click", () => { step(1);  resetAuto(); });
+  if (gcNext) gcNext.addEventListener("click", () => { step(1); resetAuto(); });
 
   // ── Click on real slide → jump to it ─────────────────────────────
   origSlides.forEach((slide, idx) => {
@@ -690,8 +690,8 @@ function initGallery() {
 
   // ── Keyboard ─────────────────────────────────────────────────────
   document.addEventListener("keydown", e => {
-    if (e.key === "ArrowRight") { step(1);  resetAuto(); }
-    if (e.key === "ArrowLeft")  { step(-1); resetAuto(); }
+    if (e.key === "ArrowRight") { step(1); resetAuto(); }
+    if (e.key === "ArrowLeft") { step(-1); resetAuto(); }
   });
 
   // ── Touch swipe ───────────────────────────────────────────────────
@@ -725,7 +725,7 @@ function initRSVP() {
   const btnNo = document.getElementById("rsvp-no");
   const countEl = document.getElementById("rsvp-count");
   const confirmEl = document.getElementById("rsvp-confirm");
-  const nameInput       = document.getElementById("rsvp-name");
+  const nameInput = document.getElementById("rsvp-name");
   const guestCountInput = document.getElementById("rsvp-participants"); // <-- අලුත් එක
 
   if (!btnYes || !btnNo) return;
@@ -737,11 +737,11 @@ function initRSVP() {
   // 2. Replace FORM_ID below with your form's ID (from its share/edit URL)
   // 3. Replace NAME_ENTRY_ID and ATTEND_ENTRY_ID with the real entry IDs
   //    (see the setup guide for how to find these two numbers)
-  const GOOGLE_FORM_URL    = "https://docs.google.com/forms/d/e/1FAIpQLScS4J8n9ARKeAoz_1JctJlrJ0Df5pItoIGdBEyvmRDSgD-Ujw/formResponse";
-  const NAME_ENTRY_FIELD   = "entry.1247952776";
+  const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLScS4J8n9ARKeAoz_1JctJlrJ0Df5pItoIGdBEyvmRDSgD-Ujw/formResponse";
+  const NAME_ENTRY_FIELD = "entry.1247952776";
   const ATTEND_ENTRY_FIELD = "entry.932895368";
-  const COUNT_ENTRY_FIELD  = "entry.1716365246"; // <-- No. of Participants
-  const ENTRY_ATTEND  = "Yes";
+  const COUNT_ENTRY_FIELD = "entry.1716365246"; // <-- No. of Participants
+  const ENTRY_ATTEND = "Yes";
   const ENTRY_DECLINE = "No";    // Form එකේ එන්නේ නැති අයට තෝරන්න දීලා තියෙන වචනය (උදා: "No") මෙතැනට දෙන්න.
   // ─────────────────────────────────────────────────────────────
 
@@ -760,7 +760,7 @@ function initRSVP() {
   if (hasResponded) {
     lockButtons(hasResponded);
     showConfirm(hasResponded);
-    if (nameInput)       nameInput.disabled       = true;
+    if (nameInput) nameInput.disabled = true;
     if (guestCountInput) guestCountInput.disabled = true; // <-- අලුත් එක
   }
 
@@ -771,8 +771,8 @@ function initRSVP() {
   function handleRSVP(e, choice) {
     if (localStorage.getItem(STORAGE_KEY + "_choice")) return; // already voted
 
-    const guestName  = nameInput        ? nameInput.value.trim()        : "";
-    const guestCount = guestCountInput  ? (guestCountInput.value.trim() || "1") : "1"; // <-- අලුත් එක
+    const guestName = nameInput ? nameInput.value.trim() : "";
+    const guestCount = guestCountInput ? (guestCountInput.value.trim() || "1") : "1"; // <-- අලුත් එක
 
     if (nameInput && !guestName) {
       nameInput.focus();
@@ -802,7 +802,7 @@ function initRSVP() {
     if (guestName) localStorage.setItem(STORAGE_KEY + "_name", guestName);
     lockButtons(choice);
     showConfirm(choice);
-    if (nameInput)       nameInput.disabled       = true;
+    if (nameInput) nameInput.disabled = true;
     if (guestCountInput) guestCountInput.disabled = true; // <-- අලුත් එක
 
     submitToGoogleForm(guestName, choice === "yes" ? ENTRY_ATTEND : ENTRY_DECLINE, guestCount);
@@ -885,9 +885,9 @@ function initRSVP() {
     if (GOOGLE_FORM_URL.includes("FORM_ID")) return; // placeholder still in place
 
     const body = new URLSearchParams();
-    body.append(NAME_ENTRY_FIELD,   name);
+    body.append(NAME_ENTRY_FIELD, name);
     body.append(ATTEND_ENTRY_FIELD, attendValue);
-    body.append(COUNT_ENTRY_FIELD,  count || "1"); // <-- අලුත් field එක
+    body.append(COUNT_ENTRY_FIELD, count || "1"); // <-- අලුත් field එක
 
     fetch(GOOGLE_FORM_URL, {
       method: "POST",
