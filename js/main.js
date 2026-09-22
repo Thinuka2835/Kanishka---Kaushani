@@ -392,46 +392,114 @@ function initCopyIBAN() {
 
 
 // ──────────────────────────────────────────────────────────────
-// ADD TO CALENDAR (.ics)
+// ADD TO CALENDAR — Cross-platform (iOS / Android / Desktop)
 // ──────────────────────────────────────────────────────────────
 function initCalendarButton() {
   const btn = document.getElementById("calendar-btn");
   if (!btn) return;
 
-  btn.addEventListener("click", () => {
-    function toICSDate(d) {
-      return d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-    }
+  // ── Event details ──────────────────────────────────────────
+  const EVENT = {
+    title:       "Kanishka & Kaushanee Wedding",
+    start:       "20261029T084500",   // Oct 29 2026 08:45 AM local
+    end:         "20261029T160000",   // Oct 29 2026 04:00 PM local
+    location:    "Rongfa Regency, 152/A8 Kosinna Junction, Kadawatha-Ganemulla Rd, Ganemulla 11020",
+    description: "You are warmly invited to celebrate the wedding of Kanishka & Kaushanee. We can\u2019t wait to see you there!",
+    uid:         "kanishka-kaushanee-wedding-20261029@invitation"
+  };
 
-    const startDate = new Date(CONFIG.weddingDateISO);
-    // Ceremony + reception + party — block out the whole day (12 hours from the start time)
-    const endDate = new Date(startDate.getTime() + 12 * 60 * 60 * 1000);
+  // ── Platform detection ─────────────────────────────────────
+  function getDevice() {
+    const ua = navigator.userAgent || "";
+    if (/iPhone|iPad|iPod/i.test(ua)) return "ios";
+    if (/Android/i.test(ua))          return "android";
+    if (/Macintosh/i.test(ua))        return "mac";
+    return "desktop";
+  }
 
-    const start = toICSDate(startDate);
-    const end = toICSDate(endDate);
-    const icsContent = [
+  // ── Build .ics content with VALARM reminder ────────────────
+  function buildICS() {
+    return [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
-      "PRODID:-//Wedding//EN",
+      "PRODID:-//KanishkaKaushaneeWedding//EN",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
       "BEGIN:VEVENT",
-      `DTSTART:${start}`,
-      `DTEND:${end}`,
-      `SUMMARY:Wedding of ${CONFIG.groomName} & ${CONFIG.brideName}`,
-      `DESCRIPTION:You are warmly invited to celebrate the wedding of ${CONFIG.groomName} and ${CONFIG.brideName}.`,
-      `LOCATION:${CONFIG.ceremony.name}, ${CONFIG.ceremony.address}`,
+      "UID:" + EVENT.uid,
+      "DTSTART;TZID=Asia/Colombo:" + EVENT.start,
+      "DTEND;TZID=Asia/Colombo:" + EVENT.end,
+      "SUMMARY:" + EVENT.title,
+      "DESCRIPTION:" + EVENT.description.replace(/,/g, "\\,"),
+      "LOCATION:" + EVENT.location.replace(/,/g, "\\,"),
+      "STATUS:CONFIRMED",
+      // ── 1-day-before reminder ──
+      "BEGIN:VALARM",
+      "TRIGGER:-P1D",
+      "ACTION:DISPLAY",
+      "DESCRIPTION:Reminder: " + EVENT.title + " is tomorrow!",
+      "END:VALARM",
+      // ── 2-hour-before reminder ──
+      "BEGIN:VALARM",
+      "TRIGGER:-PT2H",
+      "ACTION:DISPLAY",
+      "DESCRIPTION:Reminder: " + EVENT.title + " starts in 2 hours!",
+      "END:VALARM",
       "END:VEVENT",
       "END:VCALENDAR"
     ].join("\r\n");
+  }
 
-    const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "wedding-kanishka-kaushanee.ics";
+  // ── Google Calendar deep link (for Android) ────────────────
+  function googleCalendarURL() {
+    const params = new URLSearchParams({
+      action:   "TEMPLATE",
+      text:     EVENT.title,
+      dates:    EVENT.start + "/" + EVENT.end,
+      ctz:      "Asia/Colombo",
+      location: EVENT.location,
+      details:  EVENT.description
+    });
+    return "https://calendar.google.com/calendar/render?" + params.toString();
+  }
+
+  // ── Trigger .ics via Blob (iOS / Mac / Desktop) ────────────
+  function downloadICS() {
+    const ics  = buildICS();
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+    const url  = URL.createObjectURL(blob);
+
+    // On iOS, window.open works better than <a download> for
+    // handing off to the native Calendar app.
+    const device = getDevice();
+    if (device === "ios") {
+      window.open(url, "_blank");
+      // Revoke after a delay so the OS has time to read it
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      return;
+    }
+
+    // Desktop / Mac: download the file
+    const a  = document.createElement("a");
+    a.href     = url;
+    a.download = "kanishka-kaushanee-wedding.ics";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+  }
+
+  // ── Main handler ───────────────────────────────────────────
+  btn.addEventListener("click", () => {
+    const device = getDevice();
+
+    if (device === "android") {
+      // Android: open Google Calendar directly
+      window.open(googleCalendarURL(), "_blank");
+    } else {
+      // iOS / Mac / Desktop: serve the .ics blob
+      downloadICS();
+    }
   });
 }
 
