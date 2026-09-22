@@ -521,23 +521,29 @@ function initGallery() {
   if (!carousel || !track || !slides.length) return;
 
   const TOTAL = slides.length;
-  const AUTO_DELAY = 3500; // ms between auto-advances
+  const AUTO_DELAY = 2000; // ms between auto-advances (2 seconds, infinite loop)
   let gcIdx = 0;
   let autoTimer = null;
 
-  /* ---- Slide sizing ---- */
-  function slideWidth() {
+  /* ---- Slide sizing: landscape gets full width, portrait gets width from fixed height ---- */
+  function landscapeWidth() {
     const vw = window.innerWidth;
     if (vw <= 600) return vw * 0.78;
     if (vw <= 900) return vw * 0.60;
-    return Math.min(vw * 0.48, 700);
+    return Math.min(vw * 0.44, 660);
   }
-  function slideGap() { return window.innerWidth <= 600 ? 16 : 24; }
 
   function applySlideWidths() {
-    const w = slideWidth();
-    slides.forEach(s => { s.style.width = w + "px"; });
+    const lw = landscapeWidth();
+    // Portrait: height stays same as landscape height (lw * 2/3), width = height * 2/3
+    const landscapeH = lw * (2 / 3);
+    const portraitW  = landscapeH * (2 / 3);
+    slides.forEach(s => {
+      s.style.width = (s.dataset.orientation === 'portrait' ? portraitW : lw) + 'px';
+    });
   }
+
+  function slideGap() { return window.innerWidth <= 600 ? 16 : 24; }
 
   /* ---- Build dots ---- */
   const dots = [];
@@ -550,21 +556,26 @@ function initGallery() {
     dots.push(d);
   });
 
-  /* ---- Core goTo ---- */
+  /* ---- Core goTo: sums actual widths for correct mixed-ratio centering ---- */
   function goTo(idx) {
-    // Wrap around for infinite loop
     gcIdx = ((idx % TOTAL) + TOTAL) % TOTAL;
 
-    const w = slideWidth();
     const gap = slideGap();
     const containerW = carousel.offsetWidth;
-    const offset = -(gcIdx * (w + gap)) + (containerW / 2) - (w / 2);
+    const activeSlide = slides[gcIdx];
+
+    // Sum widths of all slides before the active one
+    let offsetToActive = 0;
+    for (let i = 0; i < gcIdx; i++) {
+      offsetToActive += slides[i].offsetWidth + gap;
+    }
+    // Center the active slide
+    const offset = -offsetToActive + (containerW / 2) - (activeSlide.offsetWidth / 2);
     track.style.transform = `translateX(${offset}px)`;
 
-    slides.forEach((s, i) => s.classList.toggle("gc-active", i === gcIdx));
-    dots.forEach((d, i) => d.classList.toggle("gc-dot-active", i === gcIdx));
+    slides.forEach((s, i) => s.classList.toggle('gc-active', i === gcIdx));
+    dots.forEach((d, i) => d.classList.toggle('gc-dot-active', i === gcIdx));
 
-    // Disable prev/next at edges (optional — comment out for true infinite feel)
     if (gcPrev) gcPrev.disabled = false;
     if (gcNext) gcNext.disabled = false;
   }
@@ -690,6 +701,13 @@ function initRSVP() {
     if (nameInput && !guestName) {
       nameInput.focus();
       showToastMsg("Please enter your name first 🙂");
+      return;
+    }
+
+    // Block "Joyfully Accepts" if participant count is 0
+    if (choice === "yes" && (parseInt(guestCount, 10) < 1 || guestCount === "" || guestCount === "0")) {
+      if (guestCountInput) guestCountInput.focus();
+      showToastMsg("Please add the number of participants 🙏");
       return;
     }
 

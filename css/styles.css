@@ -1354,7 +1354,7 @@ footer {
 .gc-slide {
   flex-shrink: 0;
   /* width is set by JS based on viewport */
-  aspect-ratio: 3/2;
+  aspect-ratio: 3/2;          /* default: landscape */
   border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
@@ -1370,6 +1370,11 @@ footer {
   /* Override gallery-item margin from old code */
   margin-bottom: 0 !important;
   break-inside: unset !important;
+}
+
+/* Portrait slides: taller than wide */
+.gc-slide[data-orientation="portrait"] {
+  aspect-ratio: 2/3;
 }
 
 .gc-slide.gc-active {
