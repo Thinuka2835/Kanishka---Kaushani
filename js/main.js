@@ -6,7 +6,7 @@
 // CONFIGURATION — swap these for real details
 // ──────────────────────────────────────────────────────────────
 const CONFIG = {
-  brideName: "Kaushani",
+  brideName: "Kaushanee",
   groomName: "Kanishka",
   brideInitial: "K",
   groomInitial: "K",
@@ -18,7 +18,7 @@ const CONFIG = {
   rsvpDeadline: "September 30, 2026",
   iban: "LK1234 5678 9012 3456 7890 12",
   bankName: "Bank of Ceylon",
-  accountHolder: "Kanishka & Kaushani",
+  accountHolder: "Kanishka & Kaushanee",
   ceremony: {
     name: "St. Anthony's Church",
     time: "10:00 AM",
@@ -427,7 +427,7 @@ function initCalendarButton() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "wedding-kanishka-kaushani.ics";
+    a.download = "wedding-kanishka-kaushanee.ics";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
