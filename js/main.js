@@ -508,24 +508,56 @@ function initSmoothScroll() {
 }
 
 // ──────────────────────────────────────────────────────────────
-// GALLERY — Auto-scrolling Centered Carousel
+// GALLERY — Seamless Infinite Carousel
 // ──────────────────────────────────────────────────────────────
 function initGallery() {
-  const carousel = document.getElementById("gallery-carousel");
-  const track = document.getElementById("gc-track");
-  const gcPrev = document.getElementById("gc-prev");
-  const gcNext = document.getElementById("gc-next");
-  const dotsWrap = document.getElementById("gc-dots");
-  const slides = Array.from(document.querySelectorAll(".gc-slide"));
+  const carousel  = document.getElementById("gallery-carousel");
+  const track     = document.getElementById("gc-track");
+  const gcPrev    = document.getElementById("gc-prev");
+  const gcNext    = document.getElementById("gc-next");
+  const dotsWrap  = document.getElementById("gc-dots");
+  const origSlides = Array.from(document.querySelectorAll(".gc-slide"));
 
-  if (!carousel || !track || !slides.length) return;
+  if (!carousel || !track || !origSlides.length) return;
 
-  const TOTAL = slides.length;
-  const AUTO_DELAY = 2000; // ms between auto-advances (2 seconds, infinite loop)
-  let gcIdx = 0;
-  let autoTimer = null;
+  const TOTAL      = origSlides.length;
+  const AUTO_DELAY = 2000;   // 2 seconds between auto-advances
+  const TRANS_MS   = 650;    // must match CSS transition duration
+  let autoTimer    = null;
+  let isBusy       = false;  // block rapid-fire clicks during transition
 
-  /* ---- Slide sizing: landscape gets full width, portrait gets width from fixed height ---- */
+  // ── Build infinite track: [clones] + [real slides] + [clones] ──
+  // Layout indices:  0..TOTAL-1  |  TOTAL..2*TOTAL-1  |  2*TOTAL..3*TOTAL-1
+  //                 before-clones     real slides          after-clones
+  // We start at domIdx = TOTAL (== real slide 0).
+
+  function makeClones(arr) {
+    return arr.map(s => {
+      const c = s.cloneNode(true);
+      c.dataset.clone = "1";
+      c.removeAttribute("id");
+      c.tabIndex = -1;
+      c.setAttribute("aria-hidden", "true");
+      return c;
+    });
+  }
+
+  // Prepend clones-before (insert in reverse so order is preserved)
+  const clonesBefore = makeClones(origSlides);
+  for (let i = clonesBefore.length - 1; i >= 0; i--) {
+    track.insertBefore(clonesBefore[i], track.firstChild);
+  }
+  // Append clones-after
+  const clonesAfter = makeClones(origSlides);
+  clonesAfter.forEach(c => track.appendChild(c));
+
+  // All DOM slide nodes (3 × TOTAL)
+  const allSlides = Array.from(track.querySelectorAll(".gc-slide"));
+
+  let domIdx  = TOTAL; // current DOM position (starts at first real slide)
+  let realIdx = 0;     // current logical index (for dots)
+
+  // ── Sizing ───────────────────────────────────────────────────────
   function landscapeWidth() {
     const vw = window.innerWidth;
     if (vw <= 600) return vw * 0.78;
@@ -533,93 +565,136 @@ function initGallery() {
     return Math.min(vw * 0.44, 660);
   }
 
+  function slideGap() { return window.innerWidth <= 600 ? 16 : 24; }
+
   function applySlideWidths() {
-    const lw = landscapeWidth();
-    // Portrait: height stays same as landscape height (lw * 2/3), width = height * 2/3
-    const landscapeH = lw * (2 / 3);
-    const portraitW  = landscapeH * (2 / 3);
-    slides.forEach(s => {
-      s.style.width = (s.dataset.orientation === 'portrait' ? portraitW : lw) + 'px';
+    const lw       = landscapeWidth();
+    const lh       = lw * (2 / 3);
+    const pw       = lh * (2 / 3);
+    allSlides.forEach(s => {
+      s.style.width = (s.dataset.orientation === "portrait" ? pw : lw) + "px";
     });
   }
 
-  function slideGap() { return window.innerWidth <= 600 ? 16 : 24; }
-
-  /* ---- Build dots ---- */
+  // ── Dots ─────────────────────────────────────────────────────────
   const dots = [];
-  slides.forEach((_, i) => {
-    const d = document.createElement("button");
-    d.className = "gc-dot";
-    d.setAttribute("aria-label", `Go to photo ${i + 1}`);
-    d.addEventListener("click", () => { goTo(i); resetAuto(); });
-    dotsWrap.appendChild(d);
-    dots.push(d);
-  });
+  if (dotsWrap) {
+    origSlides.forEach((_, i) => {
+      const d = document.createElement("button");
+      d.className = "gc-dot";
+      d.setAttribute("aria-label", `Go to photo ${i + 1}`);
+      d.addEventListener("click", () => { jumpToReal(i); resetAuto(); });
+      dotsWrap.appendChild(d);
+      dots.push(d);
+    });
+  }
 
-  /* ---- Core goTo: sums actual widths for correct mixed-ratio centering ---- */
-  function goTo(idx) {
-    gcIdx = ((idx % TOTAL) + TOTAL) % TOTAL;
-
-    const gap = slideGap();
-    const containerW = carousel.offsetWidth;
-    const activeSlide = slides[gcIdx];
-
-    // Sum widths of all slides before the active one
-    let offsetToActive = 0;
-    for (let i = 0; i < gcIdx; i++) {
-      offsetToActive += slides[i].offsetWidth + gap;
-    }
-    // Center the active slide
-    const offset = -offsetToActive + (containerW / 2) - (activeSlide.offsetWidth / 2);
-    track.style.transform = `translateX(${offset}px)`;
-
-    slides.forEach((s, i) => s.classList.toggle('gc-active', i === gcIdx));
-    dots.forEach((d, i) => d.classList.toggle('gc-dot-active', i === gcIdx));
-
+  function updateActive() {
+    allSlides.forEach((s, i) =>
+      s.classList.toggle("gc-active", (i % TOTAL) === realIdx)
+    );
+    dots.forEach((d, i) => d.classList.toggle("gc-dot-active", i === realIdx));
     if (gcPrev) gcPrev.disabled = false;
     if (gcNext) gcNext.disabled = false;
   }
 
-  /* ---- Auto-scroll ---- */
+  // ── Offset calculation (sums actual widths for mixed aspect ratios) ──
+  function calcOffset(idx) {
+    const gap      = slideGap();
+    const centerW  = carousel.offsetWidth;
+    let sum = 0;
+    for (let i = 0; i < idx; i++) sum += allSlides[i].offsetWidth + gap;
+    return -sum + (centerW / 2) - (allSlides[idx].offsetWidth / 2);
+  }
+
+  function applyOffset(idx, animate) {
+    track.style.transition = animate
+      ? `transform ${TRANS_MS}ms cubic-bezier(.4,0,.2,1)`
+      : "none";
+    track.style.transform = `translateX(${calcOffset(idx)}px)`;
+  }
+
+  // ── Seamless step (forward: +1, backward: -1) ─────────────────────
+  function step(dir) {
+    if (isBusy) return;
+    isBusy = true;
+
+    domIdx  += dir;
+    realIdx  = ((domIdx - TOTAL) % TOTAL + TOTAL) % TOTAL;
+
+    applyOffset(domIdx, true);
+    updateActive();
+
+    // After transition completes: if we've drifted into clone zone,
+    // silently teleport back to the matching real-slide position.
+    setTimeout(() => {
+      if (domIdx >= 2 * TOTAL) {
+        domIdx -= TOTAL;
+        applyOffset(domIdx, false);
+      } else if (domIdx < TOTAL) {
+        domIdx += TOTAL;
+        applyOffset(domIdx, false);
+      }
+      isBusy = false;
+    }, TRANS_MS + 30);
+  }
+
+  // ── Jump to a specific real slide (dot / click) ───────────────────
+  function jumpToReal(idx) {
+    isBusy  = false; // allow immediate jump
+    domIdx  = TOTAL + idx;
+    realIdx = idx;
+    applyOffset(domIdx, true);
+    updateActive();
+    setTimeout(() => { isBusy = false; }, TRANS_MS + 30);
+  }
+
+  // ── Auto-scroll ───────────────────────────────────────────────────
   function startAuto() {
     stopAuto();
-    autoTimer = setInterval(() => goTo(gcIdx + 1), AUTO_DELAY);
+    autoTimer = setInterval(() => step(1), AUTO_DELAY);
   }
   function stopAuto() {
     if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
   }
-  function resetAuto() { startAuto(); } // restart timer after manual interaction
+  function resetAuto() { startAuto(); }
 
-  /* ---- Init ---- */
+  // ── Init ─────────────────────────────────────────────────────────
   applySlideWidths();
-  goTo(0);
+  applyOffset(domIdx, false);
+  updateActive();
   startAuto();
 
-  window.addEventListener("resize", () => { applySlideWidths(); goTo(gcIdx); });
+  window.addEventListener("resize", () => {
+    applySlideWidths();
+    applyOffset(domIdx, false);
+  });
 
-  /* ---- Manual arrows ---- */
-  if (gcPrev) gcPrev.addEventListener("click", () => { goTo(gcIdx - 1); resetAuto(); });
-  if (gcNext) gcNext.addEventListener("click", () => { goTo(gcIdx + 1); resetAuto(); });
+  // ── Arrows ───────────────────────────────────────────────────────
+  if (gcPrev) gcPrev.addEventListener("click", () => { step(-1); resetAuto(); });
+  if (gcNext) gcNext.addEventListener("click", () => { step(1);  resetAuto(); });
 
-  /* ---- Click on slide → navigate to it ---- */
-  slides.forEach((slide, idx) => {
-    slide.addEventListener("click", () => { goTo(idx); resetAuto(); });
+  // ── Click on real slide → jump to it ─────────────────────────────
+  origSlides.forEach((slide, idx) => {
+    slide.addEventListener("click", () => { jumpToReal(idx); resetAuto(); });
     slide.addEventListener("keydown", e => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goTo(idx); resetAuto(); }
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault(); jumpToReal(idx); resetAuto();
+      }
     });
   });
 
-  /* ---- Pause on hover ---- */
+  // ── Hover pause ───────────────────────────────────────────────────
   carousel.addEventListener("mouseenter", stopAuto);
   carousel.addEventListener("mouseleave", startAuto);
 
-  /* ---- Keyboard ---- */
+  // ── Keyboard ─────────────────────────────────────────────────────
   document.addEventListener("keydown", e => {
-    if (e.key === "ArrowRight") { goTo(gcIdx + 1); resetAuto(); }
-    if (e.key === "ArrowLeft") { goTo(gcIdx - 1); resetAuto(); }
+    if (e.key === "ArrowRight") { step(1);  resetAuto(); }
+    if (e.key === "ArrowLeft")  { step(-1); resetAuto(); }
   });
 
-  /* ---- Touch swipe ---- */
+  // ── Touch swipe ───────────────────────────────────────────────────
   let touchStartX = 0;
   carousel.addEventListener("touchstart", e => {
     touchStartX = e.touches[0].clientX;
@@ -627,10 +702,11 @@ function initGallery() {
   }, { passive: true });
   carousel.addEventListener("touchend", e => {
     const dx = e.changedTouches[0].clientX - touchStartX;
-    if (Math.abs(dx) > 40) dx < 0 ? goTo(gcIdx + 1) : goTo(gcIdx - 1);
+    if (Math.abs(dx) > 40) dx < 0 ? step(1) : step(-1);
     startAuto();
   }, { passive: true });
 }
+
 
 function showToastMsg(msg) {
   const toast = document.getElementById("toast");
