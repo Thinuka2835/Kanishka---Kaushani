@@ -521,10 +521,11 @@ function initGallery() {
   if (!carousel || !track || !origSlides.length) return;
 
   const TOTAL = origSlides.length;
-  const AUTO_DELAY = 3500;   // 3.5 seconds between auto-advances
-  const TRANS_MS = 650;    // must match CSS transition duration
+  const AUTO_DELAY = 3500;     // 3.5 s between auto-advances
+  const TRANS_MS = 750;        // transition duration (ms) — smoother at 750
   let autoTimer = null;
-  let isBusy = false;  // block rapid-fire clicks during transition
+  let isBusy = false;
+  let offsetCache = [];        // pre-computed translateX values — no layout thrashing
 
   // ── Build infinite track: [clones] + [real slides] + [clones] ──
   // Layout indices:  0..TOTAL-1  |  TOTAL..2*TOTAL-1  |  2*TOTAL..3*TOTAL-1
@@ -574,6 +575,21 @@ function initGallery() {
     allSlides.forEach(s => {
       s.style.width = (s.dataset.orientation === "portrait" ? pw : lw) + "px";
     });
+    buildOffsetCache();
+  }
+
+  // ── Pre-compute all slide offsets (called after width changes) ────
+  // Reading offsetWidth in a loop during animation causes layout thrashing;
+  // caching here means goTo/step reads only the array — no reflow.
+  function buildOffsetCache() {
+    const gap = slideGap();
+    const centerW = carousel.offsetWidth;
+    let cum = 0;
+    offsetCache = allSlides.map(s => {
+      const off = -cum + (centerW / 2) - (s.offsetWidth / 2);
+      cum += s.offsetWidth + gap;
+      return off;
+    });
   }
 
   // ── Dots ─────────────────────────────────────────────────────────
@@ -598,19 +614,21 @@ function initGallery() {
     if (gcNext) gcNext.disabled = false;
   }
 
-  // ── Offset calculation (sums actual widths for mixed aspect ratios) ──
+  // ── Offset application ───────────────────────────────────────────
   function calcOffset(idx) {
-    const gap = slideGap();
-    const centerW = carousel.offsetWidth;
-    let sum = 0;
-    for (let i = 0; i < idx; i++) sum += allSlides[i].offsetWidth + gap;
-    return -sum + (centerW / 2) - (allSlides[idx].offsetWidth / 2);
+    return offsetCache[idx] ?? 0;
   }
 
   function applyOffset(idx, animate) {
-    track.style.transition = animate
-      ? `transform ${TRANS_MS}ms cubic-bezier(.4,0,.2,1)`
-      : "none";
+    if (animate) {
+      // easeOutCubic — fast start, smooth deceleration into place
+      track.style.transition = `transform ${TRANS_MS}ms cubic-bezier(0.215, 0.61, 0.355, 1)`;
+    } else {
+      track.style.transition = "none";
+      // Force reflow so the browser registers the transition:none
+      // before we set the new transform (prevents accidental animation).
+      void track.offsetLeft;
+    }
     track.style.transform = `translateX(${calcOffset(idx)}px)`;
   }
 
@@ -625,9 +643,10 @@ function initGallery() {
     applyOffset(domIdx, true);
     updateActive();
 
-    // After transition completes: if we've drifted into clone zone,
-    // silently teleport back to the matching real-slide position.
-    setTimeout(() => {
+    // Use transitionend for pixel-perfect timing of the silent wrap.
+    // setTimeout would fire slightly early/late causing a visible flash.
+    function onEnd() {
+      track.removeEventListener("transitionend", onEnd);
       if (domIdx >= 2 * TOTAL) {
         domIdx -= TOTAL;
         applyOffset(domIdx, false);
@@ -636,7 +655,8 @@ function initGallery() {
         applyOffset(domIdx, false);
       }
       isBusy = false;
-    }, TRANS_MS + 30);
+    }
+    track.addEventListener("transitionend", onEnd, { once: true });
   }
 
   // ── Jump to a specific real slide (dot / click) ───────────────────
@@ -660,13 +680,13 @@ function initGallery() {
   function resetAuto() { startAuto(); }
 
   // ── Init ─────────────────────────────────────────────────────────
-  applySlideWidths();
+  applySlideWidths();       // also calls buildOffsetCache()
   applyOffset(domIdx, false);
   updateActive();
   startAuto();
 
   window.addEventListener("resize", () => {
-    applySlideWidths();
+    applySlideWidths();     // rebuilds offsetCache for new viewport
     applyOffset(domIdx, false);
   });
 
